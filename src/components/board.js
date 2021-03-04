@@ -7,12 +7,14 @@ import {
   MINE_CELL,
   FLAG_CELL
 } from "../common/constants.js";
+import styled from "styled-components";
 
 export class Board extends React.Component {
   constructor(props) {
     super(props);
 
     this.state = { board: this.generateBoard() };
+    this.newGame = this.newGame.bind(this);
   }
 
   generateMinePositions() {
@@ -26,6 +28,7 @@ export class Board extends React.Component {
 
       for (let j = 0; j < width; j++) {
         row[j] = {
+          isRevealed: false,
           isFlagged: false,
           isMine: false,
           neighbours: null,
@@ -52,9 +55,6 @@ export class Board extends React.Component {
     for (let i = 0; i < height; i++) {
       for (let j = 0; j < width; j++) {
         if (randomNumbersForMines.find((a) => a === i * height + j)) {
-          //console.log(i * height + j, i, j);
-          //console.log(board[i][j]);
-
           board[i][j].isMine = true;
         }
       }
@@ -74,7 +74,6 @@ export class Board extends React.Component {
   }
 
   countNeighbours(board, heightIndex, widthIndex) {
-    // TODO: THIS IS BAD
     var count = 0;
 
     for (let i = heightIndex - 1; i <= heightIndex + 1; i++) {
@@ -95,21 +94,16 @@ export class Board extends React.Component {
   }
 
   generateBoard() {
+    console.log("llaa");
     var board = this.generateMinePositions();
     this.generateNeighborsCounting(board);
 
     return board;
   }
 
-  render() {
-    return this.renderBoard(this.state.board);
-  }
-
   getValue(currentCell) {
     if (!currentCell.isRevealed) {
-      return currentCell.value.isFlagged === true
-        ? FLAG_CELL
-        : NOT_REVEALED_CELL;
+      return currentCell.isFlagged ? FLAG_CELL : NOT_REVEALED_CELL;
     }
 
     if (currentCell.isMine === true) {
@@ -123,45 +117,132 @@ export class Board extends React.Component {
     return currentCell.neighbours;
   }
 
-  reveal(dataitem) {
+  revealItem(dataitem) {
     dataitem.isRevealed = true;
     var emoji = this.getValue(dataitem);
     dataitem.emoji = emoji;
-    var boarddd = this.state.board;
-    boarddd[dataitem.x][dataitem.y] = dataitem;
+    var updatedBoard = this.state.board;
+    updatedBoard[dataitem.x][dataitem.y] = dataitem;
+
+    return updatedBoard;
+  }
+
+  reveal(dataitem) {
+    var updatedBoard = this.revealItem(dataitem);
+
+    if (dataitem.isRevealed && dataitem.isMine) {
+      for (let i = 0; i < updatedBoard.length; i++) {
+        for (let j = 0; j < updatedBoard[0].length; j++) {
+          updatedBoard = this.revealItem(updatedBoard[i][j]);
+        }
+      }
+    }
+
+    if (dataitem.isRevealed && dataitem.neighbours === 0) {
+      this.revealEmpty(dataitem, this.state.board);
+    }
 
     this.setState({
-      board: boarddd
+      board: updatedBoard
     });
+
+    this.checkForWin();
+  }
+
+  checkForWin() {
+    const board = this.state.board;
+    var count = 0;
+
+    for (let i = 0; i < board.length; i++) {
+      for (let j = 0; j < board[0].length; j++) {
+        const current = board[i][j];
+
+        if (
+          (current.isRevealed && !current.isMine) ||
+          (!current.isRevealed && current.isMine)
+        )
+          count++;
+      }
+    }
+
+    if (count === board.length * board[0].length) alert("win!");
+  }
+
+  revealEmpty(dataitem, board) {
+    const x = dataitem.x;
+    const y = dataitem.y;
+
+    for (let i = x - 1; i <= x + 1; i++) {
+      for (let j = y - 1; j <= y + 1; j++) {
+        if (
+          i >= 0 &&
+          j >= 0 &&
+          i < board.length &&
+          j < board[0].length &&
+          !board[i][j].isRevealed
+        ) {
+          this.reveal(board[i][j]);
+
+          if (board[i][j].neighbours === 0)
+            this.revealEmpty(board[i][j], board);
+        }
+      }
+    }
   }
 
   flagCell(dataitem) {
-    dataitem.isFlagged = true;
+    dataitem.isFlagged = !dataitem.isFlagged;
     var emoji = this.getValue(dataitem);
     dataitem.emoji = emoji;
-    var boarddd = this.state.board;
-    boarddd[dataitem.x][dataitem.y] = dataitem;
+    var updatedBoard = this.state.board;
+    updatedBoard[dataitem.x][dataitem.y] = dataitem;
 
     this.setState({
-      board: boarddd
+      board: updatedBoard
     });
   }
 
-  renderBoard(data) {
-    return data.map((datarow) => {
-      return datarow.map((dataitem) => {
-        return (
-          <span>
-            <Cell
-              key={dataitem.x * datarow.length + dataitem.y}
-              value={dataitem}
-              onClick={this.reveal.bind(this, dataitem)}
-              onLeftClick={this.flagCell.bind(this, dataitem)}
-            />
-            {datarow[datarow.length - 1] === dataitem ? <div /> : ""}
-          </span>
-        );
+  render() {
+    const GenerateBoardUI = (props) => {
+      return props.board.map((datarow) => {
+        return datarow.map((dataitem) => {
+          return (
+            <span>
+              <Cell
+                key={dataitem.x * datarow.length + dataitem.y}
+                value={dataitem}
+                onClick={this.reveal.bind(this, dataitem)}
+                onLeftClick={this.flagCell.bind(this, dataitem)}
+              />
+              {datarow[datarow.length - 1] === dataitem ? <div /> : ""}
+            </span>
+          );
+        });
       });
+    };
+
+    const StyledButton = styled.button`
+      margin-bottom: 1em;
+      text-align: left;
+      background: #111111;
+      color: #aaaaaa;
+      padding: 0.5em;
+      font-family: inherit;
+      font-size: 1em;
+    `;
+
+    return (
+      <div>
+        <StyledButton onClick={this.newGame}>NEW GAME</StyledButton>
+        <br />
+        <GenerateBoardUI board={this.state.board}></GenerateBoardUI>
+      </div>
+    );
+  }
+
+  newGame() {
+    this.setState({
+      board: this.generateBoard()
     });
   }
 }

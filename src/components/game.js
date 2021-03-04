@@ -1,6 +1,7 @@
 import "../App.css";
 import React from "react";
 import Board from "../components/board.js";
+import styled from "styled-components";
 
 export class Game extends React.Component {
   state = {
@@ -12,9 +13,16 @@ export class Game extends React.Component {
   render() {
     const { height, width, mines } = this.state;
 
+    const StyledBoard = styled.div`
+      margin: auto;
+      text-align: center;
+    `;
+
     return (
       <div className="game">
-        <Board height={height} width={width} mines={mines} />
+        <StyledBoard>
+          <Board height={height} width={width} mines={mines} />
+        </StyledBoard>
       </div>
     );
   }
