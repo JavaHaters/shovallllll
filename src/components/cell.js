@@ -4,6 +4,7 @@ import styled from "styled-components";
 
 export function Cell(props) {
   const { value, onClick } = props;
+  // alert(JSON.stringify(value));
 
   return (
     <StyledCell
